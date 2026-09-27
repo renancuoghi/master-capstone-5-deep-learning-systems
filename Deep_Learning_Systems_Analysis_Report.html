@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Deep Learning Systems Analysis Report</title>
+  <style>
+    @page { size: Letter; margin: 0.7in; }
+    body { font-family: Arial, sans-serif; font-size: 10.5pt; line-height: 1.42; color: #202124; }
+    h1 { color: #17365d; font-size: 22pt; margin-bottom: 4px; }
+    h2 { color: #17365d; font-size: 14pt; border-bottom: 1px solid #b8cce4; margin-top: 20px; }
+    .subtitle { color: #555; margin-top: 0; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+    th, td { border: 1px solid #b8cce4; padding: 7px; text-align: left; }
+    th { background: #dce6f1; }
+    .callout { background: #eef5fb; border-left: 4px solid #4f81bd; padding: 9px 12px; }
+    .refs { font-size: 9.5pt; }
+  </style>
+</head>
+<body>
+  <h1>Deep Learning Systems Analysis Report</h1>
+  <p class="subtitle">Fashion-MNIST image classification with a controlled CNN regularization experiment</p>
+
+  <h2>Report Overview</h2>
+  <p>This project classifies grayscale images of clothing into ten categories using a convolutional neural network (CNN). It uses Fashion-MNIST, a public dataset of 70,000 Zalando product images, and compares a baseline CNN with an otherwise identical CNN using dropout. The aim is to evaluate whether dropout improves generalization under a fixed, reproducible training setup.</p>
+
+  <h2>Dataset and Task Description</h2>
+  <p>Fashion-MNIST contains 60,000 labeled training images and 10,000 labeled test images, each a 28×28 grayscale image assigned to one of ten apparel classes (Xiao, Rasul, &amp; Vollgraf, 2017). The task is single-label, ten-class image classification. Pixels were converted to PyTorch tensors and normalized using mean 0.5 and standard deviation 0.5. For a CPU-friendly controlled experiment, 4,000 images were sampled deterministically for training and 1,000 for validation; the official 10,000-image test split was held out until final evaluation. The data are balanced by class, but their low resolution and visually similar upper-body categories make some errors inherently plausible.</p>
+
+  <h2>Model Architecture and Design Decisions</h2>
+  <p>The baseline model has two convolutional blocks: 32 3×3 filters followed by ReLU and 2×2 max pooling, then 64 3×3 filters followed by ReLU and 2×2 max pooling. Its classifier flattens the resulting feature maps, applies a 128-unit ReLU layer, and returns ten logits. CNNs are a suitable image architecture because convolution exploits local spatial structure while shared filters reduce parameter count (LeCun, Bottou, Bengio, &amp; Haffner, 1998). The model uses cross-entropy loss and Adam with learning rate 0.001; Adam combines adaptive first- and second-moment estimates to optimize stochastic neural-network training (Kingma &amp; Ba, 2015).</p>
+
+  <h2>Experimental Comparison</h2>
+  <p>The controlled modification was dropout probability only: the baseline used <code>p=0.00</code> and the experimental configuration used <code>p=0.30</code> after the 128-unit hidden layer. Initialization seed, CNN layers, data split, batch size (128), optimizer, learning rate, epochs (10), and evaluation code were held constant. This tests the specific hypothesis that randomly omitting hidden activations during training can reduce co-adaptation and improve validation/test performance (Srivastava et al., 2014).</p>
+
+  <h2>Results and Interpretation</h2>
+  <table>
+    <tr><th>Configuration</th><th>Test cross-entropy loss</th><th>Test accuracy</th></tr>
+    <tr><td>Baseline CNN (dropout = 0.00)</td><td>0.4236</td><td>84.90%</td></tr>
+    <tr><td>Dropout CNN (dropout = 0.30)</td><td>0.4291</td><td>83.99%</td></tr>
+  </table>
+  <p>After ten epochs, the baseline achieved the stronger test score: it exceeded the dropout model by <strong>0.91 percentage points</strong> and had a slightly lower test loss (by 0.0055). The notebook’s training/validation curves make this result interpretable beyond a final score: this dropout setting did not improve held-out performance for this small model and short fixed experiment. This is a useful negative result rather than a failure of the experiment; it shows that regularization strength should be selected empirically. The dropout model’s confusion matrix shows strong recognition of trousers and weaker recall for shirts. Its displayed error cases and the most common error pairs show that visually similar categories such as shirts, coats, pullovers, and T-shirts remain difficult.</p>
+  <p class="callout"><strong>Plain-language interpretation:</strong> with more training time, the simpler CNN performed slightly better here. Dropout remains a sound technique, but its value depends on the model, data, and training schedule; similar-looking tops are still the central source of errors.</p>
+
+  <h2>Limitations and Risks</h2>
+  <p>This is a compact baseline, not a deployment-ready system. It trained on 4,000 of the available 60,000 training examples for only ten epochs, so both configurations may still be under-trained. The experiment changes only one dropout value and does not quantify uncertainty across several random splits. Fashion-MNIST images are centered, grayscale product-like images; results may not transfer to photographs with varied backgrounds, lighting, poses, or occlusion. Accuracy also hides unequal category performance, which is why the notebook includes per-class recall and a confusion matrix.</p>
+
+  <h2>Ethical and Responsible Use</h2>
+  <p>In a retail workflow, a clothing classifier could produce incorrect labels that degrade search, inventory, or accessibility descriptions. The dataset’s narrow visual presentation may underrepresent garment styles, cultural dress, body diversity, photography conditions, and labels relevant to real users. Therefore, this model should not be used to make consequential decisions about people. A practical responsible-use measure is human review for low-confidence or high-impact labels, coupled with evaluation on representative real-world data before any product use.</p>
+
+  <h2>Future Improvements</h2>
+  <p>Next steps are to train on all 60,000 images, repeat the comparison across several seeds, and select dropout using validation results. Mild image augmentation, learning-rate scheduling, batch normalization, and a larger CNN could be evaluated one change at a time. A stronger evaluation would report macro recall and confidence calibration, inspect systematic errors across additional image conditions, and test on an external retail-image dataset.</p>
+
+  <h2>References</h2>
+  <div class="refs">
+    <p>Kingma, D. P., &amp; Ba, J. (2015). Adam: A method for stochastic optimization. <em>International Conference on Learning Representations</em>. https://arxiv.org/abs/1412.6980</p>
+    <p>LeCun, Y., Bottou, L., Bengio, Y., &amp; Haffner, P. (1998). Gradient-based learning applied to document recognition. <em>Proceedings of the IEEE, 86</em>(11), 2278–2324. https://doi.org/10.1109/5.726791</p>
+    <p>Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I., &amp; Salakhutdinov, R. (2014). Dropout: A simple way to prevent neural networks from overfitting. <em>Journal of Machine Learning Research, 15</em>, 1929–1958. https://jmlr.org/papers/v15/srivastava14a.html</p>
+    <p>Xiao, H., Rasul, K., &amp; Vollgraf, R. (2017). Fashion-MNIST: A novel image dataset for benchmarking machine learning algorithms. arXiv. https://arxiv.org/abs/1708.07747</p>
+  </div>
+</body>
+</html>
